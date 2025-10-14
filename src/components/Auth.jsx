@@ -1,148 +1,124 @@
-import React, { useState } from 'react';
-import { User, Loader2 } from 'lucide-react';
+import React, { useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { Mail, Lock, LogIn, UserPlus } from "lucide-react";
 
-const Auth = ({ supabase }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  
-  // Nustatomas limitas, kad atitiktų Jūsų UI pranešimą
-  const INITIAL_QUOTA = 20; 
+// Supabase inicializacija
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
-  // --- Prisijungimo/Registracijos Funkcija (naudojant Slaptažodį) ---
-  const handleLogin = async (e) => {
+const Auth = () => {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleAuth = async (e) => {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
+    setMessage("");
 
-    // 1. Bandome prisijungti (signInWithPassword)
-    let { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-    });
-
-    if (signInError) {
-        // 2. Jei prisijungti nepavyko (vartotojas neegzistuoja), bandome užregistruoti
-        if (signInError.message.includes("Invalid login credentials") || signInError.message.includes("User not found")) {
-             
-             // Prieš registraciją, patikriname slaptažodžio ilgį (reikalaujama 6 simbolių)
-             if (password.length < 6) {
-                setError('Slaptažodis per trumpas. Turi būti bent 6 simboliai.');
-                setLoading(false);
-                return;
-             }
-
-             const { error: signUpError } = await supabase.auth.signUp({
-                email,
-                password,
-             });
-
-            if (signUpError) {
-                setError(`Registracijos klaida: ${signUpError.message}.`);
-                setLoading(false);
-                return;
-            }
-            
-            // Po sėkmingos registracijos (Supabase automatiškai sukuria sesiją)
-            setShowLoginModal(false);
-            setLoading(false);
-            return;
-        }
-
-        setError(`Prisijungimo klaida: ${signInError.message}`);
-        setLoading(false);
-        return;
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setMessage("✅ Account created! Check your email for confirmation.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        setMessage("✅ Logged in successfully!");
+      }
+    } catch (error) {
+      setMessage(`❌ ${error.message}`);
     }
-
-    // 3. Prisijungimas sėkmingas
-    setShowLoginModal(false);
-    setLoading(false);
   };
 
-  // --- Google prisijungimas (paliekamas kaip buvo, bet nebus aktyvus be rakto) ---
-  const signInWithGoogle = async () => {
-    setError('Google prisijungimas reikalauja Google Cloud kredencialų (Client ID/Secret) ir gali prašyti kortelės duomenų.');
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+      });
+      if (error) throw error;
+    } catch (error) {
+      setMessage(`❌ ${error.message}`);
+    }
   };
 
   return (
-    <div className="card">
-      <h3>Prisijunk</h3>
-      <div style={{display:'flex',gap:'8px', flexDirection: 'column'}}>
-        <button 
-          className="btn" 
-          onClick={signInWithGoogle}
-          style={{backgroundColor: '#DB4437', color: 'white', border: 'none'}}
-        >
-          Prisijungti su Google
-        </button>
-        <button 
-          className="btn" 
-          onClick={() => { setShowLoginModal(true); setError(null); }}
-          style={{backgroundColor: '#10B981', color: 'white', border: 'none'}}
-        >
-          El. paštas / Slaptažodis
-        </button>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
+      <div className="w-full max-w-md p-8 bg-gray-900 rounded-2xl shadow-xl border border-gray-700">
+        <h2 className="text-3xl font-bold text-center mb-6">
+          {isSignUp ? "Create an Account" : "Welcome Back"}
+        </h2>
+
+        <form onSubmit={handleAuth} className="space-y-4">
+          <div className="flex items-center bg-gray-800 rounded-lg px-4 py-2">
+            <Mail className="text-gray-400 w-5 h-5 mr-3" />
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="bg-transparent focus:outline-none w-full text-white"
+              required
+            />
+          </div>
+
+          <div className="flex items-center bg-gray-800 rounded-lg px-4 py-2">
+            <Lock className="text-gray-400 w-5 h-5 mr-3" />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="bg-transparent focus:outline-none w-full text-white"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-2 mt-2 bg-green-500 hover:bg-green-600 rounded-lg font-semibold flex items-center justify-center gap-2"
+          >
+            {isSignUp ? (
+              <>
+                <UserPlus className="w-5 h-5" /> Sign Up
+              </>
+            ) : (
+              <>
+                <LogIn className="w-5 h-5" /> Log In
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            className="w-full py-2 mt-3 bg-red-500 hover:bg-red-600 rounded-lg font-semibold"
+          >
+            Continue with Google
+          </button>
+
+          <p className="text-center mt-4 text-gray-400">
+            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+            <span
+              className="text-green-400 cursor-pointer hover:underline"
+              onClick={() => setIsSignUp(!isSignUp)}
+            >
+              {isSignUp ? "Log In" : "Sign Up"}
+            </span>
+          </p>
+        </form>
+
+        {message && (
+          <p className="text-center mt-4 text-sm text-gray-300">{message}</p>
+        )}
       </div>
-      <p style={{color:'var(--muted)',marginTop:'12px'}}>Nemokamai {INITIAL_QUOTA} žinučių pradžiai</p>
-
-      {error && <p style={{color:'#F87171', marginTop:'12px', textAlign: 'center'}}>{error}</p>}
-
-      {/* Prisijungimo/Registracijos Modalas */}
-      {showLoginModal && (
-        <div className="modal-overlay" style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-            backgroundColor: 'rgba(0, 0, 0, 0.7)', 
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
-        }}>
-            <div className="modal-content" style={{
-                backgroundColor: '#374151', padding: '24px', borderRadius: '12px', 
-                maxWidth: '400px', width: '90%', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
-            }}>
-                <h3 style={{color:'white', fontSize:'1.25rem', marginBottom:'16px', textAlign:'center'}}>
-                    Prisijungimas / Registracija
-                </h3>
-                <p style={{color:'#D1D5DB', fontSize:'0.875rem', marginBottom:'16px', textAlign:'center'}}>
-                    Suvedus el. paštą ir slaptažodį (min. 6 simboliai), būsite **automatiškai užregistruotas** ir prijungtas.
-                </p>
-                <form onSubmit={handleLogin} style={{display:'flex', flexDirection:'column', gap:'12px'}}>
-                    <input
-                        type="email"
-                        placeholder="El. paštas"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        style={{padding: '10px', borderRadius: '8px', border: '1px solid #4B5563', backgroundColor: '#1F2937', color: 'white'}}
-                    />
-                    <input
-                        type="password"
-                        placeholder="Slaptažodis"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                        style={{padding: '10px', borderRadius: '8px', border: '1px solid #4B5563', backgroundColor: '#1F2937', color: 'white'}}
-                    />
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="btn"
-                        style={{padding: '12px', backgroundColor: loading ? '#6B7280' : '#059669', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold'}}
-                    >
-                        {loading ? <Loader2 size={20} style={{display:'inline-block', verticalAlign:'middle'}} className="animate-spin mr-2" /> : 'Prisijungti / Registruotis'}
-                    </button>
-                </form>
-                <button
-                    onClick={() => { setShowLoginModal(false); setError(null); }}
-                    style={{marginTop: '12px', width: '100%', color: '#9CA3AF', background: 'none', border: 'none', cursor: 'pointer', fontSize:'0.875rem'}}
-                >
-                    Uždaryti
-                </button>
-            </div>
-        </div>
-      )}
     </div>
   );
-}
+};
 
+export default Auth;
