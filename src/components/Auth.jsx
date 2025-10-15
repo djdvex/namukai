@@ -8,16 +8,11 @@ const Auth = ({ onAuthSuccess }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    // Paprasta validacija
     if (!email || !password) {
       alert("Please fill in all fields.");
       return;
     }
-
-    // Demo autentifikacija (čia gali įdėti Firebase arba Supabase vėliau)
-    console.log(isLogin ? "Logging in..." : "Registering...");
-    onAuthSuccess(); // Pavyzdžiui: perėjimas į Chat arba Plans
+    onAuthSuccess();
   };
 
   return (
@@ -42,7 +37,6 @@ const Auth = ({ onAuthSuccess }) => {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-2 border rounded-lg focus:ring focus:ring-blue-200 outline-none"
           />
-
           <button
             type="submit"
             className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
